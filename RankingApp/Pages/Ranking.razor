@@ -1,0 +1,138 @@
+﻿@page "/ranking"
+@using SharedData.Models;
+@using RankingApp.Data.Services;
+
+@inject RankingService RankingService
+
+<h3>Ranking</h3>
+
+<AuthorizeView>
+    <Authorized>
+        @if (_gameResults == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>UserName</th>
+                        <th>Score</th>
+                        <th>Date</th>
+                        <th>Date</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (GameResult gameResult in _gameResults)
+                    {
+                        <tr>
+                            <td>@gameResult.UserName</td>
+                            <td>@gameResult.KillScore</td>
+                            <td>@gameResult.Date.ToString()</td>
+                            <td>
+                                <button class="btn btn-primary" @onclick="() => UpdateGameResult(gameResult)">
+                                    Edit
+                                </button>
+                            </td> 
+                            <td>
+                                <button class="btn btn-primary" @onclick="() => DeleteGameResult(gameResult)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <p>
+                <button class ="btn btn-primary" @onclick="AddGameResult">Add</button>
+            </p>
+
+            @if(_isShowPopup == true)
+            {
+                @*전형적인 팝업 설계.*@
+                <div class="modal" style="display:block" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Add/Update GameResult</h3>
+                                <button type="button" class="close" @onclick="ClosePopup">
+                                    <span area-hidden="true">X</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <label for="UserName">UserName</label>
+                                <input class="form-control" type="text" placeholder="UserName" @bind-value="_gameResult.UserName"/>
+                                <label for="Score">Score</label>
+                                <input class="form-control" type="text" placeholder="Score" @bind-value="_gameResult.KillScore"/>
+                                <br />
+                                <button class="btn btn-primary" @onclick="SaveGameResult">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p><em>로그인 필요.</em></p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    List<GameResult> _gameResults;
+
+    bool _isShowPopup = false;
+    GameResult _gameResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _gameResults = await RankingService.GetGameResultsAsync();
+    }
+
+    void ClosePopup()
+    {
+        _isShowPopup = false;
+    }
+
+    void AddGameResult()
+    {
+        _isShowPopup = true;
+        // 새로운 데이터인지 기존 데이터인지 확인하기 위해 Id를 0으로 초기화.
+        _gameResult = new GameResult() { Id = 0 };
+    }
+
+    // 메모리 뿐 아니라 DB에도 저장해야 함.
+    async Task SaveGameResult()
+    {
+        // 새로 생성.
+        if(_gameResult.Id == 0)
+        {
+            _gameResult.Date = DateTime.Now;
+            var result = await RankingService.AddGameResult(_gameResult);
+        }
+        // 수정.
+        else
+        {
+            var result = await RankingService.UpdateGameResult(_gameResult);
+        }
+
+        _gameResults = await RankingService.GetGameResultsAsync();
+    }
+
+    void UpdateGameResult(GameResult gameResult)
+    {
+        _isShowPopup = true;
+        _gameResult = gameResult;
+    }
+
+    async Task DeleteGameResult(GameResult gameResult)
+    {
+        var result = RankingService.DeleteGameResult(gameResult);
+        _gameResults = await RankingService.GetGameResultsAsync();
+    }
+}
